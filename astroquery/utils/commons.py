@@ -25,7 +25,7 @@ from astropy.io import fits,votable
 
 from ..exceptions import TimeoutError
 from ..extern import six
-from .. import version
+from astropy import version
 
 PY3 = sys.version_info[0] >= 3
 
