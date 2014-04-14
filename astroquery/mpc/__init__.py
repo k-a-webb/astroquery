@@ -1,22 +1,36 @@
-__author__ = 'Michele Bannister @mtbannister'
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """
+MPC
 Access to data in the Minor Planet Center.
 http://www.minorplanetcenter.net/iau/mpc.html
+-------------------------
+
+:author: Michele Bannister (micheleb@uvic.ca)
 """
-from astropy.config import ConfigurationItem
-
-MPC_ORBITS_URL = ConfigurationItem('mpc_orbits_url',
-                              ['http://minorplanetcenter.net/ws/orbits'],
-                              "MPC orbits query URL")
-MPC_OBS_URL = ConfigurationItem('mpc_obs_url',
-                              ['http://minorplanetcenter.net/ws/observations'],
-                              "MPC observations query URL")
-MPC_TIMEOUT = ConfigurationItem('timeout', 60, 'time limit for connecting to MPC server')
-MPC_RETRIEVAL_TIMEOUT = ConfigurationItem('retrieval_timeout', 120,
-                                          'time limit for retrieving a data file once it has been located')
-
-
-
 import warnings
 warnings.warn("MPC API is in alpha testing, and may alter as the MPC tweak their public-facing interface.")
+
+from astropy.config import ConfigurationItem
+
+# Make the URL of the server, timeout and other items configurable
+# See <http://docs.astropy.org/en/latest/config/index.html#developer-usage>
+# for docs and examples on how to do this
+ORBITS_SERVER = ConfigurationItem('mpc_orbits_server',
+                              ['http://minorplanetcenter.net/ws/orbits'],
+                              "MPC orbits query URL")
+OBS_SERVER = ConfigurationItem('mpc_obs_server',
+                              ['http://minorplanetcenter.net/ws/observations'],
+                              "MPC observations query URL")
+
+# Set the timeout for connecting to the server in seconds
+TIMEOUT = ConfigurationItem('timeout', 60, 'default timeout for connecting to MPC server')
+RETRIEVAL_TIMEOUT = ConfigurationItem('retrieval_timeout', 120,
+                                          'time limit for retrieving a data file once it has been located')
+
+# Now import your public class
+# Should probably have the same name as your module
+
+from .core import Mpc
+
+__all__ = ['Mpc']
