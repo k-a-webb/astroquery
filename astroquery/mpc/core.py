@@ -3,21 +3,14 @@ from __future__ import print_function
 
 # put all imports organized as shown below
 # 1. standard library imports
-# import re
-# import tempfile
-# import warnings
-# import functools
-# import httpie
+import warnings
 
 # 2. third party imports
-# import astropy.units as u
-# import astropy.coordinates as coord
 # import astropy.io.votable as votable
 # from astropy.table import Table
-# from astropy.io import fits
 
 # 3. local imports - use relative imports
-from ..query import BaseQuery # inherits from BaseQuery as required
+from ..query import QueryWithLogin, suspend_cache # inherits from BaseQuery as required
 from ..utils import commons # has common functions required by most modules incl. TimeoutError
 from ..utils import prepend_docstr_noreturns # automatically generate docs for similar functions
 from ..utils import async_to_sync # all class methods must be callable as static as well as instance methods.
@@ -43,7 +36,7 @@ __all__ = ['Mpc']
 # declare global variables and constants if any
 
 @async_to_sync
-class Mpc(BaseQuery):
+class Mpc(QueryWithLogin):
     """
     Connects to the Minor Planet Center public-facing database and allows queries on specific objects.
     """
@@ -52,9 +45,19 @@ class Mpc(BaseQuery):
     ORBS_URL = ORBITS_SERVER
     TIMEOUT = TIMEOUT
 
+    def __init__(self):
+        super(Mpc, self).__init__()
+        self.orbit = None
+        self.observations = None
+
+    def _login(self, username, password):
+        self.username = username
+        self.password = password
+        return self.username, self.password
+
     def query_object(self, object_name, get_query_payload=False, verbose=False):
         """
-        Retrieve
+        Retrieve orbital elements and observations of the given object from the MPC.
 
         Parameters
         ----------
@@ -66,15 +69,11 @@ class Mpc(BaseQuery):
         verbose : bool, optional
            This should default to `False`, when set to `True` it displays
            VOTable warnings.
-        any_other_param : <param_type>
-            similarly list other parameters the method takes
 
         Returns
         -------
         result : `astropy.table.Table`
             The result of the query as an `astropy.table.Table` object.
-            All queries other than image queries should typically return
-            results like this.
 
         Examples
         --------
@@ -130,23 +129,7 @@ class Mpc(BaseQuery):
         # See below for an example:
 
         # first initialize the dictionary of HTTP request parameters
-        request_payload = dict()
-
-        # Now fill up the dictionary. Here the dictionary key should match
-        # the exact parameter name as expected by the remote server. The
-        # corresponding dict value should also be in the same format as
-        # expected by the server. Additional parsing of the user passed
-        # value may be required to get it in the right units or format.
-        # All this parsing may be done in a separate private `_args_to_payload`
-        # method for cleaner code.
-
-        assert isinstance(object_name, str)
-
-        request_payload['object_name'] = object_name
-        # similarly fill up the rest of the dict ...
-        request_payload['username'] = 'mpc_ws'
-        request_payload['password'] = 'mpc!!ws'
-        request_payload['Content-Type'] = 'application/xml'
+        request_payload = self._args_to_payload(object_name)
 
         if get_query_payload:
             return request_payload
@@ -158,8 +141,54 @@ class Mpc(BaseQuery):
                                         request_payload,
                                         self.TIMEOUT,
                                         request_type='POST')
+        print(obs_response)
         return obs_response
 
+    def _args_to_payload(self, object_name):
+        payload = dict()
+        # Now fill up the dictionary. Here the dictionary key should match
+        # the exact parameter name as expected by the remote server. The
+        # corresponding dict value should also be in the same format as
+        # expected by the server. Additional parsing of the user passed
+        # value may be required to get it in the right units or format.
+        # All this parsing may be done in a separate private `_args_to_payload`
+        # method for cleaner code.
+
+        assert isinstance(object_name, str)
+        xml_wrap = '<designation>'+object_name+'</designation>'
+
+        payload['object_name'] = xml_wrap
+        # similarly fill up the rest of the dict ...
+        payload['username'] = self.username
+        payload['password'] = self.password
+        payload['Content-Type'] = 'application/xml'
+
+        return payload
+
+    def _parse_result(self, response, verbose=False):
+        """
+        Parses the results form the HTTP response to `astropy.table.Table`.
+
+        Parameters
+        ----------
+        response : `requests.Response`
+            The HTTP response object
+        verbose : bool, optional
+            Defaults to false. When true it will display warnings whenever the VOtable
+            returned from the Service doesn't conform to the standard.
+
+        Returns
+        -------
+        table : `astropy.table.Table`
+        """
+        if not verbose:
+            commons.suppress_vo_warnings()
+
+        # Check if table is empty
+        # if len(table) == 0:
+        #     warnings.warn("Query returned no results, so the table will be empty")
+
+        return response  # eventually return a proper Table
 
     def query_orbital_elements(self, elements, get_query_payload=False, verbose=False):
         """
@@ -170,7 +199,7 @@ class Mpc(BaseQuery):
 
 
 # the default tool for users to interact with is an instance of the Class
-mpc = Mpc()
+mpc_instance = Mpc()
 
 # once your class is done, tests should be written
 # See ./tests for examples on this
