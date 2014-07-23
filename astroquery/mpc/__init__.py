@@ -17,15 +17,15 @@ from astropy.config import ConfigurationItem
 # See <http://docs.astropy.org/en/latest/config/index.html#developer-usage>
 # for docs and examples on how to do this
 ORBITS_SERVER = ConfigurationItem('mpc_orbits_server',
-                              ['http://minorplanetcenter.net/ws/orbits'],
+                              ['http://mpcdb1.cfa.harvard.edu/ws/search'],
                               "MPC orbits query URL")
-OBS_SERVER = ConfigurationItem('mpc_obs_server',
-                              ['http://minorplanetcenter.net/ws/observations'],
-                              "MPC observations query URL")
+# OBS_SERVER = ConfigurationItem('mpc_obs_server',
+#                               ['http://minorplanetcenter.net/ws/observations'],
+#                               "MPC observations query URL")
 
 # Set the timeout for connecting to the server in seconds
-TIMEOUT = ConfigurationItem('timeout', 60, 'default timeout for connecting to MPC server')
-RETRIEVAL_TIMEOUT = ConfigurationItem('retrieval_timeout', 120,
+TIMEOUT = ConfigurationItem('timeout', int(60), 'default timeout for connecting to MPC server')
+RETRIEVAL_TIMEOUT = ConfigurationItem('retrieval_timeout', int(120),
                                           'time limit for retrieving a data file once it has been located')
 
 # Now import your public class

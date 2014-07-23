@@ -14,7 +14,9 @@ from ..query import QueryWithLogin, suspend_cache # inherits from BaseQuery as r
 from ..utils import commons # has common functions required by most modules incl. TimeoutError
 from ..utils import prepend_docstr_noreturns # automatically generate docs for similar functions
 from ..utils import async_to_sync # all class methods must be callable as static as well as instance methods.
-from . import OBS_SERVER, ORBITS_SERVER, TIMEOUT, RETRIEVAL_TIMEOUT # configurable items declared in __init__.py
+from . import ORBITS_SERVER, TIMEOUT, RETRIEVAL_TIMEOUT # configurable items declared in __init__.py
+
+import requests
 
 __author__ = 'Michele Bannister   git:@mtbannister'
 
@@ -41,7 +43,6 @@ class Mpc(QueryWithLogin):
     Connects to the Minor Planet Center public-facing database and allows queries on specific objects.
     """
     # use the Configuration Items imported from __init__.py to set the URL, TIMEOUT, etc.
-    OBS_URL = OBS_SERVER
     ORBS_URL = ORBITS_SERVER
     TIMEOUT = TIMEOUT
 
@@ -137,11 +138,13 @@ class Mpc(QueryWithLogin):
         # HTTP request parameters we constructed above, the TIMEOUT which we imported
         # from __init__.py and the type of HTTP request - either 'GET' or 'POST', which
         # defaults to 'GET'.
-        obs_response = commons.send_request(self.OBS_URL,  # just try the orbit for starters
+        obs_response = commons.send_request(self.ORBS_URL.defaultvalue,  # just try the orbit for starters
                                         request_payload,
-                                        self.TIMEOUT,
-                                        request_type='POST')
-        print(obs_response)
+                                        self.TIMEOUT.defaultvalue,
+                                        request_type='POST',
+                                        auth = (self.username, self.password))
+
+        print(obs_response.text)
         return obs_response
 
     def _args_to_payload(self, object_name):
@@ -155,13 +158,16 @@ class Mpc(QueryWithLogin):
         # method for cleaner code.
 
         assert isinstance(object_name, str)
-        xml_wrap = '<designation>'+object_name+'</designation>'
 
-        payload['object_name'] = xml_wrap
-        # similarly fill up the rest of the dict ...
-        payload['username'] = self.username
-        payload['password'] = self.password
-        payload['Content-Type'] = 'application/xml'
+        # payload['order_by_desc'] = 'order_by_desc'
+        # payload['spin_period'] = 'spin_period'
+        # payload['limit 10'] = 'limit 10'
+        payload['name'] = object_name
+        # payload['orbit_type'] = '16'
+        # payload['limit'] = '10'
+        payload['return'] = 'name,inclination'
+        # To get results in JSON format instead of xml, add 'json 1' to parameters.
+        payload['json'] = '1'
 
         return payload
 
