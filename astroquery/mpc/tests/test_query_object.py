@@ -8,7 +8,7 @@ test_instance._login('mpc_ws', 'mpc!!ws')
 
 print test_instance._args_to_payload("Eris")
 
-print test_instance.query_object('Eris', verbose=True)
+print test_instance.query_object('Eris')
 
 # payload['order_by_desc'] = 'order_by_desc'
 # payload['spin_period'] = 'spin_period'

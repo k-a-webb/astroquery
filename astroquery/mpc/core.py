@@ -6,8 +6,6 @@ from __future__ import print_function
 import warnings
 
 # 2. third party imports
-# import astropy.io.votable as votable
-# from astropy.table import Table
 
 # 3. local imports - use relative imports
 from ..query import QueryWithLogin, suspend_cache # inherits from BaseQuery as required
@@ -159,9 +157,8 @@ class Mpc(QueryWithLogin):
                                         self.TIMEOUT,
                                         request_type='POST',
                                         auth = (self.username, self.password))
-        print(obs_response.json())
 
-        return obs_response
+        return obs_response  # currently a requests.models.Response
 
     def _args_to_payload(self, object_id, return_request=None):
         payload = dict()
@@ -199,12 +196,14 @@ class Mpc(QueryWithLogin):
         if not verbose:
             commons.suppress_vo_warnings()
 
+        retval = response.json()[0]['properties']
+        print retval
         # Check if table is empty
-        # if len(table) == 0:
-        #     warnings.warn("Query returned no results, so the table will be empty")
+        if len(retval.keys()) == 0:
+            warnings.warn("Query returned no results, so the table will be empty")
 
-        # return response  # eventually return a proper Table
-        raise NotImplementedError
+        return retval
+
 
     def query_orbital_elements(self, elements, get_query_payload=False, verbose=False):
         """
