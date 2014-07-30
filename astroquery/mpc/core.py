@@ -14,7 +14,7 @@ from ..query import QueryWithLogin, suspend_cache # inherits from BaseQuery as r
 from ..utils import commons # has common functions required by most modules incl. TimeoutError
 from ..utils import prepend_docstr_noreturns # automatically generate docs for similar functions
 from ..utils import async_to_sync # all class methods must be callable as static as well as instance methods.
-from . import ORBITS_SERVER, TIMEOUT, RETRIEVAL_TIMEOUT # configurable items declared in __init__.py
+from . import SERVER, TIMEOUT, RETRIEVAL_TIMEOUT # configurable items declared in __init__.py
 
 import requests
 
@@ -43,8 +43,8 @@ class Mpc(QueryWithLogin):
     Connects to the Minor Planet Center public-facing database and allows queries on specific objects.
     """
     # use the Configuration Items imported from __init__.py to set the URL, TIMEOUT, etc.
-    ORBS_URL = ORBITS_SERVER
-    TIMEOUT = TIMEOUT
+    SERVER_URL = SERVER.defaultvalue
+    TIMEOUT = TIMEOUT.defaultvalue
 
     def __init__(self):
         super(Mpc, self).__init__()
@@ -56,9 +56,26 @@ class Mpc(QueryWithLogin):
         self.password = password
         return self.username, self.password
 
-    def query_object(self, object_name, get_query_payload=False, verbose=False):
+    def _validate_object_id(self, object_id):
+        assert isinstance(object_id, str)
+        object_id_type = {'name':None, "number":None, "designation":None}
+        if object_id.isalpha():
+            retval = "name"
+        elif object_id.isalnum() and len(object_id) == 7:
+            retval = 'designation'
+        elif object_id.isdigit():
+            retval = 'number'
+        else:
+            raise ValueError('%s unknown type: neither name, number nor provisional designation.' % object_id)
+
+        return retval
+
+    def query_object(self, object_id, get_query_payload=False, verbose=False):
         """
         Retrieve orbital elements and observations of the given object from the MPC.
+        This implements the same as
+        http://mpcdb1.cfa.harvard.edu/ws/search?number=134340&json=1
+        for object (134340)
 
         Parameters
         ----------
@@ -94,7 +111,7 @@ class Mpc(QueryWithLogin):
         # These steps are filled in below, but may be replaced
         # or modified as required.
 
-        response = self.query_object_async(object_name, get_query_payload=get_query_payload)
+        response = self.query_object_async(object_id, get_query_payload=get_query_payload)
         if get_query_payload:
             return response
         result = self._parse_result(response, verbose=verbose)
@@ -136,52 +153,44 @@ class Mpc(QueryWithLogin):
             return request_payload
         # commons.send_request takes 4 parameters - the URL to query, the dict of
         # HTTP request parameters we constructed above, the TIMEOUT which we imported
-        # from __init__.py and the type of HTTP request - either 'GET' or 'POST', which
-        # defaults to 'GET'.
-        obs_response = commons.send_request(self.ORBS_URL.defaultvalue,  # just try the orbit for starters
+        # from __init__.py and the type of HTTP request - either 'GET' or 'POST'.
+        obs_response = commons.send_request(self.SERVER_URL,
                                         request_payload,
-                                        self.TIMEOUT.defaultvalue,
+                                        self.TIMEOUT,
                                         request_type='POST',
                                         auth = (self.username, self.password))
+        print(obs_response.json())
 
-        print(obs_response.text)
         return obs_response
 
-    def _args_to_payload(self, object_name):
+    def _args_to_payload(self, object_id, return_request=None):
         payload = dict()
-        # Now fill up the dictionary. Here the dictionary key should match
+        # Here the dictionary key should match
         # the exact parameter name as expected by the remote server. The
         # corresponding dict value should also be in the same format as
-        # expected by the server. Additional parsing of the user passed
-        # value may be required to get it in the right units or format.
-        # All this parsing may be done in a separate private `_args_to_payload`
-        # method for cleaner code.
+        # expected by the server.
 
-        assert isinstance(object_name, str)
-
-        # payload['order_by_desc'] = 'order_by_desc'
-        # payload['spin_period'] = 'spin_period'
-        # payload['limit 10'] = 'limit 10'
-        payload['name'] = object_name
-        # payload['orbit_type'] = '16'
-        # payload['limit'] = '10'
-        payload['return'] = 'name,inclination'
-        # To get results in JSON format instead of xml, add 'json 1' to parameters.
-        payload['json'] = '1'
+        oID = object_id.strip()
+        object_id_type = self._validate_object_id(oID)
+        payload[object_id_type] = oID
+        if return_request:
+            payload['return'] = return_request
+        payload['json'] = '1'  # ensures results are in JSON rather than xml
 
         return payload
 
     def _parse_result(self, response, verbose=False):
         """
-        Parses the results form the HTTP response to `astropy.table.Table`.
+        Parses the results from the HTTP response to `astropy.table.Table`.
+        This is currently expecting _args_to_payload() to have set the return type to JSON.
 
         Parameters
         ----------
         response : `requests.Response`
             The HTTP response object
         verbose : bool, optional
-            Defaults to false. When true it will display warnings whenever the VOtable
-            returned from the Service doesn't conform to the standard.
+            Defaults to false. When true it will display warnings whenever the JSON
+            returned from the MPC doesn't conform to the standard.
 
         Returns
         -------
@@ -194,14 +203,24 @@ class Mpc(QueryWithLogin):
         # if len(table) == 0:
         #     warnings.warn("Query returned no results, so the table will be empty")
 
-        return response  # eventually return a proper Table
+        # return response  # eventually return a proper Table
+        raise NotImplementedError
 
     def query_orbital_elements(self, elements, get_query_payload=False, verbose=False):
         """
         Search based on eccentricity, orbital major axis,
         or some other parameter that is likely to be catalogued (accurately?).
         """
+        raise NotImplementedError
 
+    def query_observations(self, name, get_query_payload=False, verbose=False):
+        """
+        e.g. http://mpcdb1.cfa.harvard.edu/ws/observations?number=134340&json=1
+        :param name: Object name (e.g. Eris) or designation (134340 or 2010 VW93)
+        :param get_query_payload:
+        :param verbose:
+        :return:
+        """
 
 
 # the default tool for users to interact with is an instance of the Class

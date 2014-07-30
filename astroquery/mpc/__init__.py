@@ -16,12 +16,9 @@ from astropy.config import ConfigurationItem
 # Make the URL of the server, timeout and other items configurable
 # See <http://docs.astropy.org/en/latest/config/index.html#developer-usage>
 # for docs and examples on how to do this
-ORBITS_SERVER = ConfigurationItem('mpc_orbits_server',
+SERVER = ConfigurationItem('mpc_server',
                               ['http://mpcdb1.cfa.harvard.edu/ws/search'],
-                              "MPC orbits query URL")
-# OBS_SERVER = ConfigurationItem('mpc_obs_server',
-#                               ['http://minorplanetcenter.net/ws/observations'],
-#                               "MPC observations query URL")
+                              "MPC orbits, physical properties and observations query URL")
 
 # Set the timeout for connecting to the server in seconds
 TIMEOUT = ConfigurationItem('timeout', int(60), 'default timeout for connecting to MPC server')
