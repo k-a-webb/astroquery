@@ -34,6 +34,30 @@ The web service should return the orbit (or observations) for the designated obj
 __all__ = ['Mpc']
 
 # declare global variables and constants if any
+PAYLOAD = [u'absolute_magnitude', u'albedo', u'albedo_neowise', u'albedo_neowise_unc', u'albedo_unc',
+           u'aphelion_distance', u'apparition_end_date', u'apparition_end_magn', u'apparition_start_date',
+           u'apparition_start_magn', u'arc_length', u'argument_of_perihelion', u'ascending_node', u'b_minus_v',
+           u'b_minus_v_source', u'binary_object', u'color_ignore', u'critical_list_numbered_object', u'delta_v',
+           u'designation', u'diameter', u'diameter_neowise', u'diameter_neowise_unc', u'diameter_unc', u'earth_moid',
+           u'eccentricity', u'epoch', u'epoch_jd', u'first_observation_date_used', u'first_opposition_used',
+           u'g_adopted', u'g_adopted_source', u'g_neowise', u'greatest_elong', u'greatest_elong_date',
+           u'greatest_elong_decl', u'greatest_elong_magn', u'h_neowise', u'inclination', u'jupiter_moid', u'km_neo',
+           u'last_observation_date_used', u'last_opposition_used', u'lightcurve_notes', u'lightcurve_quality',
+           u'mars_moid', u'mean_anomaly', u'mean_daily_motion', u'mercury_moid', u'name', u'neo', u'number',
+           u'observations', u'oppositions', u'orbit_type', u'orbit_uncertainty', u'p_vector_x', u'p_vector_y',
+           u'p_vector_z', u'panstarrs_v_minus_gprime', u'panstarrs_v_minus_gprime_source', u'panstarrs_v_minus_iprime',
+           u'panstarrs_v_minus_iprime_source', u'panstarrs_v_minus_rprime', u'panstarrs_v_minus_rprime_source',
+           u'panstarrs_v_minus_uprime', u'panstarrs_v_minus_wprime', u'panstarrs_v_minus_wprime_source',
+           u'panstarrs_v_minus_yprime', u'panstarrs_v_minus_yprime_source', u'panstarrs_v_minus_zprime',
+           u'panstarrs_v_minus_zprime_source', u'perihelion_date', u'perihelion_date_jd', u'perihelion_distance',
+           u'period', u'pha', u'phase_slope', u'q_vector_x', u'q_vector_y', u'q_vector_z', u'rc_minus_ic',
+           u'rc_minus_ic_source', u'residual_rms', u'saturn_moid', u'semimajor_axis', u'spin_amplitude_flag',
+           u'spin_max_amplitude', u'spin_min_amplitude', u'spin_period', u'spin_period_description',
+           u'spin_period_flag', u'taxonomy_class', u'taxonomy_class_source', u'tisserand_jupiter', u'u_minus_b',
+           u'u_minus_b_source', u'uranus_moid', u'v_minus_gprime', u'v_minus_gprime_source', u'v_minus_iprime',
+           u'v_minus_iprime_source', u'v_minus_rc', u'v_minus_rc_source', u'v_minus_rprime', u'v_minus_rprime_source',
+           u'v_minus_uprime', u'v_minus_wprime', u'v_minus_yprime', u'v_minus_zprime', u'v_minus_zprime_source',
+           u'venus_moid']
 
 @async_to_sync
 class Mpc(QueryWithLogin):
@@ -56,7 +80,7 @@ class Mpc(QueryWithLogin):
 
     def _validate_object_id(self, object_id):
         assert isinstance(object_id, str)
-        object_id_type = {'name':None, "number":None, "designation":None}
+        # object_id_type = {'name':None, "number":None, "designation":None}
         if object_id.isalpha():
             retval = "name"
         elif object_id.isalnum() and len(object_id) == 7:
@@ -126,7 +150,7 @@ class Mpc(QueryWithLogin):
 
 
     @prepend_docstr_noreturns(query_object.__doc__)
-    def query_object_async(self, object_name, get_query_payload=False) :
+    def query_object_async(self, object_name, get_query_payload=False):
         """
         Returns
         -------
@@ -145,7 +169,7 @@ class Mpc(QueryWithLogin):
         # See below for an example:
 
         # first initialize the dictionary of HTTP request parameters
-        request_payload = self._args_to_payload(object_name)
+        request_payload = self._args_to_payload(object_id=object_name)
 
         if get_query_payload:
             return request_payload
@@ -160,19 +184,39 @@ class Mpc(QueryWithLogin):
 
         return obs_response  # currently a requests.models.Response
 
-    def _args_to_payload(self, object_id, return_request=None):
+    def _args_to_payload(self, object_id=None, constraints=None, return_request=None, json='1'):
         payload = dict()
         # Here the dictionary key should match
         # the exact parameter name as expected by the remote server. The
         # corresponding dict value should also be in the same format as
         # expected by the server.
 
-        oID = object_id.strip()
-        object_id_type = self._validate_object_id(oID)
-        payload[object_id_type] = oID
+        print(object_id, constraints, return_request)
+
+        assert (object_id is not None) or (constraints is not None)  # have to have one or the other!
+
+        if object_id:
+            oID = object_id.strip()
+            object_id_type = self._validate_object_id(oID)
+            payload[object_id_type] = oID
+
+        if constraints:
+            for n in constraints.split(','):
+                base = n.split(' ')[0].strip('_max').strip('_min')
+                if not base.isdigit():
+                    assert base in PAYLOAD  # make sure the input is valid
+                    m = n.split(' ')[1]
+                    assert m.isdigit()
+                    payload[n.split(' ')[0]] = m
+
         if return_request:
             payload['return'] = return_request
-        payload['json'] = '1'  # ensures results are in JSON rather than xml
+
+        payload['json'] = json  # ensures results are in JSON rather than xml
+
+        print(payload)
+
+        assert len(payload.items()) > 1  # make sure it didn't fail somehow and only loaded the json setting
 
         return payload
 
@@ -193,24 +237,60 @@ class Mpc(QueryWithLogin):
         -------
         table : `astropy.table.Table`
         """
+        retval = None
+
         if not verbose:
             commons.suppress_vo_warnings()
 
-        retval = response.json()[0]['properties']
-        print retval
-        # Check if table is empty
-        if len(retval.keys()) == 0:
+        print(response.json())
+
+        if len(response.json()) > 0:
+
+            # Fix this so it parses the objects correctly.
+            retval = response.json()[0]['properties']
+            if len(retval.keys()) > 0:
+                return retval
+        else:
             warnings.warn("Query returned no results, so the table will be empty")
 
-        return retval
-
-
-    def query_orbital_elements(self, elements, get_query_payload=False, verbose=False):
+    def query_parameters(self, constraints, return_request=None, get_query_payload=False, verbose=False):
         """
         Search based on eccentricity, orbital major axis,
-        or some other parameter that is likely to be catalogued (accurately?).
+        or some other parameter that is likely to be catalogued.
+
+
+
         """
-        raise NotImplementedError
+        response = self.query_parameters_async(constraints, return_request=return_request,
+                                               get_query_payload=get_query_payload)
+        if get_query_payload:
+            return response
+        result = self._parse_result(response, verbose=verbose)
+
+        return result
+
+    @prepend_docstr_noreturns(query_parameters.__doc__)
+    def query_parameters_async(self, constraints, return_request=None, get_query_payload=False):
+        """
+        Returns
+        -------
+        response : `requests.Response`
+            The HTTP response returned from the service.
+            All async methods should return the raw HTTP response.
+        """
+        # first initialize the dictionary of HTTP request parameters
+        request_payload = self._args_to_payload(constraints=constraints, return_request=return_request)
+
+        if get_query_payload:
+            return request_payload
+
+        obs_response = commons.send_request(self.SERVER_URL,
+                                        request_payload,
+                                        self.TIMEOUT,
+                                        request_type='POST',
+                                        auth = (self.username, self.password))
+
+        return obs_response  # currently a requests.models.Response
 
     def query_observations(self, name, get_query_payload=False, verbose=False):
         """
@@ -220,7 +300,7 @@ class Mpc(QueryWithLogin):
         :param verbose:
         :return:
         """
-
+        raise NotImplementedError
 
 # the default tool for users to interact with is an instance of the Class
 mpc_instance = Mpc()

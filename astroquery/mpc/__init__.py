@@ -21,7 +21,7 @@ SERVER = ConfigurationItem('mpc_server',
                               "MPC orbits, physical properties and observations query URL")
 
 # Set the timeout for connecting to the server in seconds
-TIMEOUT = ConfigurationItem('timeout', int(60), 'default timeout for connecting to MPC server')
+TIMEOUT = ConfigurationItem('timeout', int(600), 'default timeout for connecting to MPC server')
 RETRIEVAL_TIMEOUT = ConfigurationItem('retrieval_timeout', int(120),
                                           'time limit for retrieving a data file once it has been located')
 

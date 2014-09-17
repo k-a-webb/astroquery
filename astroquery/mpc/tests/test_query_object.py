@@ -6,9 +6,9 @@ test_instance = mpc.Mpc()
 
 test_instance._login('mpc_ws', 'mpc!!ws')
 
-print test_instance._args_to_payload("Eris")
+assert test_instance._args_to_payload("Eris") == {'json': '1', 'name': 'Eris'}
 
-print test_instance.query_object('Eris')
+print(test_instance.query_object('Eris')['inclination'])
 
 # payload['order_by_desc'] = 'order_by_desc'
 # payload['spin_period'] = 'spin_period'
@@ -18,3 +18,4 @@ print test_instance.query_object('Eris')
 
 
 return_request = 'name,inclination'
+
