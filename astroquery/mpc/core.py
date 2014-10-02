@@ -191,7 +191,7 @@ class Mpc(QueryWithLogin):
         # corresponding dict value should also be in the same format as
         # expected by the server.
 
-        print(object_id, constraints, return_request)
+        # print(object_id, constraints, return_request)
 
         assert (object_id is not None) or (constraints is not None)  # have to have one or the other!
 
@@ -214,7 +214,7 @@ class Mpc(QueryWithLogin):
 
         payload['json'] = json  # ensures results are in JSON rather than xml
 
-        print(payload)
+        # print(payload)
 
         assert len(payload.items()) > 1  # make sure it didn't fail somehow and only loaded the json setting
 
@@ -242,13 +242,16 @@ class Mpc(QueryWithLogin):
         if not verbose:
             commons.suppress_vo_warnings()
 
-        print(response.json())
+        # print(response)
+        # print(response.json())
 
         if len(response.json()) > 0:
 
             # Fix this so it parses the objects correctly.
-            retval = response.json()[0]['properties']
-            if len(retval.keys()) > 0:
+            retval = []
+            for val in response.json():
+                retval.append(val[u'property'])
+            if len(retval) > 0:
                 return retval
         else:
             warnings.warn("Query returned no results, so the table will be empty")
